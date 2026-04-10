@@ -144,6 +144,30 @@ export default function LobbyView({ G, moves, playerID, matchID }: LobbyViewProp
                       ))}
                     </div>
                   )}
+
+                  {/* AI Add Buttons for Host */}
+                  {!isReady && isHost && (
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => moves.addAI(player.id, 'easy')}
+                        className="px-2 py-1 text-[10px] uppercase tracking-wider font-bold rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
+                      >
+                        + Easy AI
+                      </button>
+                      <button
+                        onClick={() => moves.addAI(player.id, 'medium')}
+                        className="px-2 py-1 text-[10px] uppercase tracking-wider font-bold rounded bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 transition-colors"
+                      >
+                        + Mid AI
+                      </button>
+                      <button
+                        onClick={() => moves.addAI(player.id, 'hard')}
+                        className="px-2 py-1 text-[10px] uppercase tracking-wider font-bold rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                      >
+                        + Hard AI
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Ready badge */}

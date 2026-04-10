@@ -63,7 +63,7 @@ export default function HomePage() {
       localStorage.setItem(`tiki-playerID-${matchID}`, '0')
       
       router.push(`/game/${matchID}`)
-    } catch (err) {
+    } catch {
       setErrorMsg('Failed to create match. Is server running?')
       setLoading(false)
     }

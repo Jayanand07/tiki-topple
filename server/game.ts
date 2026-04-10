@@ -60,6 +60,28 @@ export const TikiTopple: Game<GameState> = {
           }
           return newState
         },
+        addAI: ({ G, playerID }, targetId: number, difficulty: 'easy'|'medium'|'hard') => {
+          // Only host (Player 0) can add AI manually
+          if (playerID !== '0') return INVALID_MOVE
+          
+          const newState = {
+            ...G,
+            players: G.players.map((p) => ({
+              ...p,
+              tokens: [...p.tokens],
+              objective: p.objective ? { ...p.objective } : undefined,
+            })),
+            track: G.track.map((s) => [...s]),
+            moveHistory: [...G.moveHistory],
+            chatMessages: [...(G.chatMessages || [])],
+          }
+          if (targetId >= 0 && targetId < newState.players.length) {
+            newState.players[targetId].name = `🤖 Bot (${difficulty})`
+            newState.players[targetId].isAI = true
+            newState.players[targetId].aiDifficulty = difficulty
+          }
+          return newState
+        },
         fillWithAI: ({ G }) => {
           const newState = {
             ...G,
@@ -77,6 +99,8 @@ export const TikiTopple: Game<GameState> = {
           newState.players.forEach(p => {
             if (p.name.startsWith('Player ')) {
               p.isAI = true
+              p.aiDifficulty = 'medium'
+              p.name = `🤖 Bot (medium)`
             }
           })
           return newState

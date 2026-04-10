@@ -48,7 +48,10 @@ export async function getAIMove(
   for (const move of moves) {
     try {
       const newState = applyMove(state, move)
-      const score = minimax(newState, 3, -Infinity, Infinity, false, aiPlayerId)
+      const difficulty = state.players[aiPlayerId]?.aiDifficulty || 'medium'
+      const searchDepth = difficulty === 'hard' ? 3 : difficulty === 'medium' ? 2 : 1
+      
+      const score = minimax(newState, searchDepth, -Infinity, Infinity, false, aiPlayerId)
       if (score > bestScore) {
         bestScore = score
         bestMove = move

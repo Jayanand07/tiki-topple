@@ -25,6 +25,8 @@ export interface Player {
   objective?: SecretObjective
   /** Whether this player is controlled by AI */
   isAI?: boolean
+  /** AI difficulty level if this is an AI player */
+  aiDifficulty?: 'easy' | 'medium' | 'hard'
 }
 
 /** A chat or system message in the game */
