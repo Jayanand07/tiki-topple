@@ -1,16 +1,8 @@
-import { Server, Origins } from 'boardgame.io/server'
+import { Server } from 'boardgame.io/server'
 import { TikiTopple } from './game'
+import cors from 'cors'
 
-/**
- * Standalone boardgame.io server for Tiki Topple.
- *
- * Accepts connections from:
- * - http://localhost:3000 (local dev)
- * - FRONTEND_URL env var (production deploy)
- * - Any *.vercel.app subdomain (preview deploys)
- */
-
-const PORT = parseInt(process.env.PORT || '3001', 10)
+const PORT = parseInt(process.env.PORT || '8080', 10)
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000'
 
 const server = Server({
@@ -18,12 +10,17 @@ const server = Server({
   origins: [
     FRONTEND_URL,
     'http://localhost:3000',
-    // Match any Vercel preview/production subdomain
-    Origins.LOCALHOST_IN_DEVELOPMENT,
-  ].filter(Boolean),
+    /\.vercel\.app$/, // Allow all Vercel subdomains
+  ]
+})
+
+// Add health check route for Railway
+server.app.use(cors())
+server.app.get('/', (ctx: any) => {
+  ctx.body = { status: 'ok', game: 'tiki-topple' }
 })
 
 server.run(PORT, () => {
-  console.log(`🗿 Tiki Topple server running on port ${PORT}`)
+  console.log(`🌺 Tiki Topple server running on port ${PORT}`)
   console.log(`   Accepting connections from: ${FRONTEND_URL}`)
 })
