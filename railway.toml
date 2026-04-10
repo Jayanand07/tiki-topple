@@ -1,0 +1,8 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm install && npx tsc -p tsconfig.server.json"
+
+[deploy]
+startCommand = "node dist/server/index.js"
+healthcheckPath = "/"
+restartPolicyType = "on_failure"
