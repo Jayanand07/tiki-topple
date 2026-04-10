@@ -45,12 +45,20 @@ export async function getAIMove(
   let bestMove = moves[0]
   let bestScore = -Infinity
 
+  const difficulty = state.players[aiPlayerId]?.aiDifficulty || 'medium'
+  const errorRate = difficulty === 'hard' ? 0 : difficulty === 'medium' ? 0.3 : 0.6
+
+  // To balance the game and give human players a fair chance,
+  // lower difficulty levels have a higher chance of making a suboptimal (random) move.
+  if (Math.random() < errorRate) {
+    return moves[Math.floor(Math.random() * moves.length)]
+  }
+
+  const searchDepth = difficulty === 'hard' ? 3 : difficulty === 'medium' ? 2 : 1
+
   for (const move of moves) {
     try {
       const newState = applyMove(state, move)
-      const difficulty = state.players[aiPlayerId]?.aiDifficulty || 'medium'
-      const searchDepth = difficulty === 'hard' ? 3 : difficulty === 'medium' ? 2 : 1
-      
       const score = minimax(newState, searchDepth, -Infinity, Infinity, false, aiPlayerId)
       if (score > bestScore) {
         bestScore = score
