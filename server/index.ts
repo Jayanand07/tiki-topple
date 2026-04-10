@@ -1,6 +1,5 @@
 import { Server } from 'boardgame.io/server'
 import { TikiTopple } from './game'
-import cors from 'cors'
 
 const PORT = parseInt(process.env.PORT || '8080', 10)
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000'
@@ -14,10 +13,13 @@ const server = Server({
   ]
 })
 
-// Add health check route for Railway
-server.app.use(cors())
-server.app.get('/', (ctx: any) => {
-  ctx.body = { status: 'ok', game: 'tiki-topple' }
+// Add health check route for Railway (Koa middleware style)
+server.app.use(async (ctx: any, next: any) => {
+  if (ctx.path === '/') {
+    ctx.body = { status: 'ok', game: 'tiki-topple' }
+    return
+  }
+  await next()
 })
 
 server.run(PORT, () => {
