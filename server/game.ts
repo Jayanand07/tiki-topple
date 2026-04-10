@@ -35,103 +35,154 @@ export const TikiTopple: Game<GameState> = {
     return createInitialState(players)
   },
 
-  moves: {
-    /**
-     * Move the top k tokens (1, 2, or 3) of the frontmost stack forward
-     * by one position, then advance to the next player's turn.
-     */
-    doMove: ({ G, ctx }, k: number) => {
-      // Only the active player may act
-      if (ctx.currentPlayer !== String(G.currentPlayer)) return INVALID_MOVE
-      if (![1, 2, 3].includes(k)) return INVALID_MOVE
-
-      try {
-        let newState = moveTokens(G, k as 1 | 2 | 3)
-        newState = nextTurn(newState)
-        return newState
-      } catch {
-        return INVALID_MOVE
+  phases: {
+    lobby: {
+      start: true,
+      next: 'play',
+      moves: {
+        joinGame: ({ G, playerID }, name: string) => {
+          if (!playerID) return INVALID_MOVE
+          const newState = {
+            ...G,
+            players: G.players.map((p) => ({
+              ...p,
+              tokens: [...p.tokens],
+              objective: p.objective ? { ...p.objective } : undefined,
+            })),
+            track: G.track.map((s) => [...s]),
+            moveHistory: [...G.moveHistory],
+            chatMessages: [...(G.chatMessages || [])],
+          }
+          const idx = parseInt(playerID as string, 10)
+          if (idx >= 0 && idx < newState.players.length) {
+            newState.players[idx].name = name
+            newState.players[idx].isAI = false
+          }
+          return newState
+        },
+        fillWithAI: ({ G }) => {
+          const newState = {
+            ...G,
+            players: G.players.map((p) => ({
+              ...p,
+              tokens: [...p.tokens],
+              objective: p.objective ? { ...p.objective } : undefined,
+            })),
+            track: G.track.map((s) => [...s]),
+            moveHistory: [...G.moveHistory],
+            chatMessages: [...(G.chatMessages || [])],
+          }
+          // The host determines who is an AI. Anyone who hasn't been named explicitly 
+          // or is left generic becomes an AI.
+          newState.players.forEach(p => {
+            if (p.name.startsWith('Player ')) {
+              p.isAI = true
+            }
+          })
+          return newState
+        },
+        startGame: ({ events }) => {
+          events.endPhase()
+        }
       }
     },
-
-    /**
-     * Reorder the top 2 or 3 tokens of the frontmost stack,
-     * then advance to the next player's turn.
-     */
-    doReorder: ({ G, ctx }, newOrder: string[]) => {
-      if (ctx.currentPlayer !== String(G.currentPlayer)) return INVALID_MOVE
-      if (![2, 3].includes(newOrder.length)) return INVALID_MOVE
-
-      try {
-        let newState = reorderTokens(G, newOrder as TokenID[])
-        newState = nextTurn(newState)
-        return newState
-      } catch {
-        return INVALID_MOVE
-      }
-    },
-
-    /**
-     * Let a player set their display name before or during the game.
-     */
-    setPlayerName: ({ G }, name: string, playerID: string) => {
-      const newState = {
-        ...G,
-        players: G.players.map((p) => ({
-          ...p,
-          tokens: [...p.tokens],
-          objective: p.objective ? { ...p.objective } : undefined,
-        })),
-        track: G.track.map((s) => [...s]),
-        moveHistory: [...G.moveHistory],
-        chatMessages: [...(G.chatMessages || [])],
-      }
-      const idx = parseInt(playerID, 10)
-      if (idx >= 0 && idx < newState.players.length) {
-        newState.players[idx].name = name
-      }
-      return newState
-    },
-
-    /**
-     * Send a chat message. This is a free action — does NOT consume a turn.
-     */
-    sendChat: ({ G }, message: string, playerID: string) => {
-      const idx = parseInt(playerID, 10)
-      const player = G.players[idx]
-      if (!player) return INVALID_MOVE
-
-      const chatMsg: ChatMessage = {
-        playerId: idx,
-        playerName: player.name,
-        playerColor: player.color,
-        message: message.slice(0, 200), // Limit message length
-        timestamp: Date.now(),
-        type: message.startsWith(':') ? 'emoji' : 'chat',
-      }
-
-      return {
-        ...G,
-        players: G.players.map((p) => ({
-          ...p,
-          tokens: [...p.tokens],
-          objective: p.objective ? { ...p.objective } : undefined,
-        })),
-        track: G.track.map((s) => [...s]),
-        moveHistory: [...G.moveHistory],
-        chatMessages: [...(G.chatMessages || []), chatMsg],
-      }
-    },
-  },
-
-  turn: {
-    moveLimit: 1,
+    play: {
+      moves: {
+        /**
+         * Move the top k tokens (1, 2, or 3) of the frontmost stack forward
+         * by one position, then advance to the next player's turn.
+         */
+        doMove: ({ G, ctx, events }, k: number) => {
+          // Only the active player may act
+          if (ctx.currentPlayer !== String(G.currentPlayer)) return INVALID_MOVE
+          if (![1, 2, 3].includes(k)) return INVALID_MOVE
+    
+          try {
+            let newState = moveTokens(G, k as 1 | 2 | 3)
+            newState = nextTurn(newState)
+            return newState
+          } catch {
+            return INVALID_MOVE
+          }
+        },
+    
+        /**
+         * Reorder the top 2 or 3 tokens of the frontmost stack,
+         * then advance to the next player's turn.
+         */
+        doReorder: ({ G, ctx, events }, newOrder: string[]) => {
+          if (ctx.currentPlayer !== String(G.currentPlayer)) return INVALID_MOVE
+          if (![2, 3].includes(newOrder.length)) return INVALID_MOVE
+    
+          try {
+            let newState = reorderTokens(G, newOrder as TokenID[])
+            newState = nextTurn(newState)
+            return newState
+          } catch {
+            return INVALID_MOVE
+          }
+        },
+    
+        /**
+         * Let a player set their display name before or during the game.
+         */
+        setPlayerName: ({ G, playerID }, name: string) => {
+          const newState = {
+            ...G,
+            players: G.players.map((p) => ({
+              ...p,
+              tokens: [...p.tokens],
+              objective: p.objective ? { ...p.objective } : undefined,
+            })),
+            track: G.track.map((s) => [...s]),
+            moveHistory: [...G.moveHistory],
+            chatMessages: [...(G.chatMessages || [])],
+          }
+          const idx = parseInt(playerID as string, 10)
+          if (idx >= 0 && idx < newState.players.length) {
+            newState.players[idx].name = name
+          }
+          return newState
+        },
+    
+        /**
+         * Send a chat message. This is a free action — does NOT consume a turn.
+         */
+        sendChat: ({ G }, message: string, playerID: string) => {
+          const idx = parseInt(playerID, 10)
+          const player = G.players[idx]
+          if (!player) return INVALID_MOVE
+    
+          const chatMsg: ChatMessage = {
+            playerId: idx,
+            playerName: player.name,
+            playerColor: player.color,
+            message: message.slice(0, 200), // Limit message length
+            timestamp: Date.now(),
+            type: message.startsWith(':') ? 'emoji' : 'chat',
+          }
+    
+          return {
+            ...G,
+            players: G.players.map((p) => ({
+              ...p,
+              tokens: [...p.tokens],
+              objective: p.objective ? { ...p.objective } : undefined,
+            })),
+            track: G.track.map((s) => [...s]),
+            moveHistory: [...G.moveHistory],
+            chatMessages: [...(G.chatMessages || []), chatMsg],
+          }
+        },
+      },
+      turn: {
+        moveLimit: 1,
+      },
+    }
   },
 
   /**
    * Evaluated after every move.
-   * When the game is over, returns `{ scores, winner }` which boardgame.io
-   * stores as the match result.
    */
   endIf: ({ G }) => {
     if (checkGameOver(G)) {
@@ -139,7 +190,7 @@ export const TikiTopple: Game<GameState> = {
       return { scores, winner: scores[0].playerId }
     }
   },
-
+  
   ai: {
     enumerate: (G: GameState) => {
       const moves = []

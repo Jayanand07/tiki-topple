@@ -7,16 +7,6 @@ import Button from '@/components/ui/Button'
 import Token from '@/components/ui/Token'
 import { ALL_TOKENS } from '@/lib/constants'
 
-/** Generate a random 4-letter uppercase room code */
-function generateRoomCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
-  let code = ''
-  for (let i = 0; i < 4; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)]
-  }
-  return code
-}
-
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({
@@ -54,20 +44,33 @@ export default function HomePage() {
   // Join Room state
   const [joinName, setJoinName] = useState('')
   const [joinInput, setJoinInput] = useState('')
+  
+  const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
 
-  const handleCreate = () => {
-    if (!createName.trim()) return
-    const code = generateRoomCode()
-    const params = new URLSearchParams({
-      host: 'true',
-      name: createName.trim(),
-      players: String(numPlayers),
-    })
-    router.push(`/lobby/${code}?${params.toString()}`)
+  const handleCreate = async () => {
+    if (!createName.trim() || loading) return
+    setLoading(true)
+    setErrorMsg('')
+    try {
+      const { apiCreateMatch, apiJoinMatch } = await import('@/lib/api')
+      const matchID = await apiCreateMatch(numPlayers)
+      // Host claims the first seat ("0")
+      const credentials = await apiJoinMatch(matchID, '0', createName.trim())
+      
+      // Store locally so game board picks it up
+      localStorage.setItem(`tiki-credentials-${matchID}`, credentials)
+      localStorage.setItem(`tiki-playerID-${matchID}`, '0')
+      
+      router.push(`/game/${matchID}`)
+    } catch (err) {
+      setErrorMsg('Failed to create match. Is server running?')
+      setLoading(false)
+    }
   }
 
-  const handleJoin = () => {
-    if (!joinName.trim()) return
+  const handleJoin = async () => {
+    if (!joinName.trim() || loading) return
     let code = joinInput.trim().toUpperCase()
 
     // If it looks like a URL, extract the code from the last path segment
@@ -78,12 +81,36 @@ export default function HomePage() {
       code = lastPart.split('?')[0].substring(0, 4).toUpperCase()
     }
 
-    if (code.length !== 4) return
+    if (code.length !== 4) {
+      setErrorMsg('Invalid room code')
+      return
+    }
 
-    const params = new URLSearchParams({
-      name: joinName.trim(),
-    })
-    router.push(`/lobby/${code}?${params.toString()}`)
+    setLoading(true)
+    setErrorMsg('')
+    try {
+      const { apiGetMatch, apiJoinMatch } = await import('@/lib/api')
+      const match = await apiGetMatch(code)
+      
+      // Find first empty seat
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const emptySeat = match.players.find((p: any) => !p.name)
+      if (!emptySeat) {
+        throw new Error('Room is full!')
+      }
+      
+      const playerID = emptySeat.id.toString()
+      const credentials = await apiJoinMatch(code, playerID, joinName.trim())
+      
+      localStorage.setItem(`tiki-credentials-${code}`, credentials)
+      localStorage.setItem(`tiki-playerID-${code}`, playerID)
+      
+      router.push(`/game/${code}`)
+    } catch (err) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setErrorMsg((err as any).message || 'Failed to join match')
+      setLoading(false)
+    }
   }
 
   return (
@@ -190,10 +217,10 @@ export default function HomePage() {
               variant="primary"
               size="lg"
               onClick={handleCreate}
-              disabled={!createName.trim()}
+              disabled={!createName.trim() || loading}
               className="w-full mt-auto"
             >
-              Create Room →
+              {loading ? 'Creating...' : 'Create Room →'}
             </Button>
           </motion.div>
 
@@ -246,13 +273,23 @@ export default function HomePage() {
               variant="secondary"
               size="lg"
               onClick={handleJoin}
-              disabled={!joinName.trim() || joinInput.trim().length < 4}
+              disabled={!joinName.trim() || joinInput.trim().length < 4 || loading}
               className="w-full mt-auto"
             >
-              Join Room →
+              {loading ? 'Joining...' : 'Join Room →'}
             </Button>
           </motion.div>
         </div>
+
+        {errorMsg && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 px-4 py-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm w-full max-w-xl text-center"
+          >
+            {errorMsg}
+          </motion.div>
+        )}
 
         {/* ── Token Color Preview ── */}
         <motion.div
