@@ -10,8 +10,11 @@ import type { GameState } from './types'
  * The server URL for the boardgame.io multiplayer backend.
  * Reads from NEXT_PUBLIC_SERVER_URL so it can be configured per environment.
  */
-const SERVER_URL =
-  process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001'
+let rawUrl = process.env.NEXT_PUBLIC_SERVER_URL || ''
+if (rawUrl && !rawUrl.startsWith('http')) {
+  rawUrl = 'https://' + rawUrl
+}
+export const SERVER_URL = rawUrl || (process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : 'https://tiki-topple-production.up.railway.app')
 
 /**
  * Create a configured boardgame.io client instance for use in React.
